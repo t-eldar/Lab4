@@ -1,0 +1,65 @@
+﻿@using Lab4.Data.Models;
+
+
+<div class="card mt-3">
+	<div class="card-header">
+		<button @onclick="Refresh" class="btn-outline-dark rounded-2 p-2">
+			Обновить
+		</button>
+	</div>
+	<div class="card-body">
+@if (Posts is null)
+{
+	<p><em>Loading...</em></p>
+}
+else
+{
+	@foreach(var post in Posts)
+	{
+		if (post is not null)
+		{
+			<div class="card m-1">
+				<div class="card-header d-flex justify-content-between">
+					<div>
+						<h5 class="card-title">@post.Title</h5>
+						<NavLink href=@($"/user/{post.UserId}")>
+							Автор: @post?.User?.Username
+						</NavLink>
+					</div>
+					<div>
+						@if(IsEditable)
+						{
+							<button @onclick=@(() => OnEdit?.Invoke(post!)) 
+								class="btn-outline-secondary rounded-2">Изменить</button>
+							<button @onclick=@(() => OnDelete?.Invoke(post!.Id)) 
+								class="btn-outline-danger rounded-2">Удалить</button>
+						}
+					</div>
+				</div>
+				<div class="card-body">
+					<p class="card-text">@post?.Description</p>
+				</div>
+			</div>
+		}
+	}
+}
+	</div>
+</div>
+
+
+@code {
+	[Parameter, EditorRequired]
+	public IEnumerable<Post> Posts { get; set; } = null!;
+
+	[Parameter, EditorRequired]
+	public bool IsEditable { get; set; }
+
+	[Parameter, EditorRequired]
+	public Func<Task> Refresh { get; set; } = null!;
+
+	[Parameter]
+	public Action<Post>? OnEdit { get; set; } 
+
+	[Parameter]
+	public Action<int>? OnDelete { get; set; }
+}

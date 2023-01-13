@@ -1,0 +1,60 @@
+﻿@using Blazored.LocalStorage;
+@using Lab4.Data.Models;
+
+@inherits LayoutComponentBase;
+
+@inject ILocalStorageService _localStorageService;
+@inject NavigationManager _navigationManager;
+
+<PageTitle>Blog</PageTitle>
+
+<div class="page">
+	<div class="sidebar">
+		<NavMenu CurrentUser=@_user />
+	</div>
+
+	<main>
+		<div class="top-row px-4">
+			@if (_user is not null)
+			{		
+					<button @onclick="Logout" class="btn-outline-dark rounded-1 p-2">
+					Выйти
+				</button>
+			}
+			else
+			{
+				<button @onclick="Login" class="btn-outline-dark rounded-1 p-2">
+					Войти
+				</button>
+			}
+		</div>
+
+		<article class="content px-4">
+			@Body
+		</article>
+	</main>
+</div>
+
+@code {
+	private User? _user;
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		await base.OnAfterRenderAsync(firstRender);
+		if (await _localStorageService.ContainKeyAsync("user"))
+		{
+			_user = await _localStorageService.GetItemAsync<User>("user");
+		}
+		await InvokeAsync(StateHasChanged);
+	}
+	private async void Logout()
+	{
+		if (_user is null)
+		{
+			return;
+		}
+		await _localStorageService.RemoveItemAsync("user");
+		await InvokeAsync(StateHasChanged);
+	}
+	private void Login() => _navigationManager.NavigateTo("/signin");
+}

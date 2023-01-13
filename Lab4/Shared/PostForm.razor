@@ -1,0 +1,41 @@
+﻿@using Lab4.Data.Models;
+@using Lab4.Services;
+
+@inject IPostsService _postsService;
+
+<div class="card w-75">
+	<div class="card-header">
+		Новый пост
+	</div>
+	<div class="card-body">
+		<InputText class="rounded-1 mb-3 p-2" @bind-Value="@Post.Title" placeholder="Название"/>
+		<InputTextArea class="rounded-1 w-100 p-2" @bind-Value="@Post.Description" placeholder="Описание"/>
+	</div>
+	<div class="card-footer d-flex justify-content-end">
+		<button @onclick="OnClick" class="btn-outline-dark rounded-2 p-2">Опубликовать</button>
+	</div>
+</div>
+
+@code {
+	[Parameter, EditorRequired]
+	public Post Post { get; set; } = null!;
+
+	[Parameter, EditorRequired]
+	public bool IsEdit { get; set; }
+
+	private async Task OnClick()
+	{
+		if (Post is null || Post.Title == "" || Post.Description == "")
+	{
+			return;
+		}
+		if (IsEdit)
+		{
+			await _postsService.UpdateAsync(Post);
+			await InvokeAsync(StateHasChanged);
+			return;
+		}
+		await _postsService.CreateAsync(Post);
+		await InvokeAsync(StateHasChanged);
+	}
+}

@@ -1,0 +1,51 @@
+﻿@page "/"
+
+@using Lab4.Data.Models;
+@using Lab4.Services;
+@using Blazored.LocalStorage;
+
+@inject ILocalStorageService _localStorageService;
+@inject IPostsService _postsService;
+
+<PageTitle>Главная</PageTitle>
+
+@if (_user is not null)
+{
+	<PostForm Post=@_post IsEdit=false/>
+}
+
+<PostList Posts=@_posts IsEditable=false Refresh=@Refresh />
+
+@code {
+	private User? _user;
+	private Post _post = new()
+	{
+		Title = "",
+		Description = "",
+		UserId = -1,
+	};
+	private List<Post>? _posts;
+
+	private bool _isValid => _user is not null 
+		&& !string.IsNullOrEmpty(_post.Description) 
+		&& !string.IsNullOrEmpty(_post.Title);
+
+	protected override async Task OnAfterRenderAsync(bool firstRender) 
+	{
+		await base.OnAfterRenderAsync(firstRender);
+		if (firstRender 
+			&& await _localStorageService.ContainKeyAsync("user"))
+		{
+			var posts = await _postsService.GetAllAsync();
+			_posts = posts?.ToList();
+			_user = await _localStorageService.GetItemAsync<User>("user");
+			_post.UserId = _user.Id;
+		}
+		await InvokeAsync(StateHasChanged);
+	}
+	public async Task Refresh()
+	{
+		var posts = await _postsService.GetAllAsync();
+		_posts = posts?.ToList();
+	}
+}

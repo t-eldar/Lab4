@@ -1,0 +1,80 @@
+﻿@page "/signup"
+
+@using Lab4.Data.Models;
+@using Lab4.Services;
+@using Lab4.Exceptions;
+@using Blazored.LocalStorage;
+
+@inject IAuthenticationService _authenticationService;
+@inject IExceptionHandler _exceptionHandler;
+@inject ILocalStorageService _localStorageService;
+
+<PageTitle>Регистрация</PageTitle>
+
+@if (_currentUser is null)
+{
+	<h4>Имя пользователя</h4>
+	<InputText @bind-Value="_username" />
+	<h4>Пароль</h4>
+	<InputText @bind-Value="_password" type="password"/>
+	<div class="alert alert-danger" role="alert" hidden="@(!_isError)">
+		@_errorMessage
+	</div>
+	<div hidden="@(!_isLoading)">loading</div>
+	<NavLink class="nav-link" href="signin">
+		<span aria-hidden="true"></span> Уже зарегистрирован
+	</NavLink>
+	<button class="btn btn-primary" 
+			disabled="@_isInvalid"
+			@onclick="Register">
+		Зарегистрироваться
+	</button>
+}
+else
+{
+	<h1>Вы успешно вошли как @_currentUser.Username</h1>
+}
+
+@code {
+	private string? _username;
+	private string? _password;
+	private string? _errorMessage;
+	private bool _isInvalid => string.IsNullOrEmpty(_username) || string.IsNullOrEmpty(_password);
+	private bool _isError => _errorMessage is not null;
+	private bool _isLoading;
+	private User? _currentUser;
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		await base.OnAfterRenderAsync(firstRender);
+		if (firstRender
+			&& await _localStorageService.ContainKeyAsync("user"))
+		{
+			_currentUser = await _localStorageService.GetItemAsync<User>("user");
+		}
+		await InvokeAsync(StateHasChanged);
+	}
+	private async void Register()
+	{
+		_errorMessage = null;
+		_isLoading = true;
+		if (_isInvalid)
+		{
+			return;
+		}
+		await _exceptionHandler.HandleAsync(async () =>
+		{
+			await _authenticationService.SignUpAsync(_username!, _password!);
+			_isLoading = false;
+		}, (type, errorMessage) =>
+		{
+			_errorMessage = type switch
+			{
+				ExceptionType.AlreadyExists => $"Пользователь с именем {_username} уже существует",
+				ExceptionType.InternalError => $"Произошла непредвиденная ошибка {errorMessage}",
+				_ => $"Произошла непредвиденная ошибка {errorMessage}",
+			};
+			_isLoading = false;
+		});
+		await InvokeAsync(StateHasChanged);
+	}
+}

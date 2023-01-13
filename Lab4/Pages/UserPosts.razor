@@ -1,0 +1,84 @@
+﻿@page "/user/{UserId:int}";
+
+@using Blazored.LocalStorage;
+@using Lab4.Data.Models;
+@using Lab4.Services;
+
+@inject ILocalStorageService _localStorageService;
+@inject IPostsService _postsService;
+@inject IUsersService _usersService;
+
+<PageTitle>Мои посты</PageTitle>
+
+<div class="card-header">
+	@(_author is not null ? _author.Username : "Нет такого автора")
+</div>
+
+@if (_currentUser is not null && _currentUser.Id == UserId)
+{
+	<PostForm 
+		Post=@(new Post{ Title = "", Description = "",UserId = UserId }) 
+		IsEdit=false />
+	<Modal @ref=@_modal>
+		<Title>Изменить</Title>
+		<Body>
+			<PostForm Post=@_editingPost IsEdit=true />
+		</Body>
+	</Modal>
+}
+<PostList 
+	Posts=@_posts 
+	IsEditable=@_isEditable 
+	OnDelete=@OnDelete 
+	OnEdit=@OnEdit 
+	Refresh=@Refresh/>
+
+@code {
+	[Parameter]
+	public int UserId { get; set; }
+
+	private Modal? _modal { get; set; }
+
+	private User? _author;
+	private User? _currentUser;
+
+	private Post? _editingPost = new()
+	{
+		Title = "",
+		Description = "",
+		UserId = -1,
+	};
+	private bool _isEditable => _currentUser is not null && _currentUser.Id == UserId;
+	private List<Post>? _posts;
+
+	protected override async Task OnAfterRenderAsync(bool firstRender) 
+	{
+		await base.OnAfterRenderAsync(firstRender);
+		if (firstRender)
+		{
+			if (await _localStorageService.ContainKeyAsync("user"))
+			{
+				_currentUser = await _localStorageService.GetItemAsync<User>("user");
+			}
+			_posts = (await _postsService.GetByUserAsync(UserId))?.ToList();
+			_author = await _usersService.GetAsync(UserId);
+			await InvokeAsync(StateHasChanged);
+		}
+	}
+	private async Task Refresh()
+	{
+		var posts = await _postsService.GetByUserAsync(UserId);
+		_posts = posts?.ToList();
+	}
+	private async void OnEdit(Post post)
+	{
+		_editingPost = post;
+		await InvokeAsync(StateHasChanged);
+		_modal?.Open();
+	}
+	private async void OnDelete(int id)
+	{
+		await _postsService.DeleteAsync(id);
+		await InvokeAsync(StateHasChanged);
+	}
+}

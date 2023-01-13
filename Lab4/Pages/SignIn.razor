@@ -1,0 +1,83 @@
+﻿@page "/signin";
+
+@using Lab4.Data.Models;
+@using Lab4.Services;
+@using Lab4.Exceptions;
+@using Blazored.LocalStorage;
+
+@inject IAuthenticationService _authenticationService;
+@inject ILocalStorageService _localStorageService;
+@inject NavigationManager _navigationManager;
+@inject IExceptionHandler _exceptionHandler;
+
+<PageTitle>Вход</PageTitle>
+
+@if (_currentUser is null)
+{
+	<h3>Вход</h3>
+	<h4>Имя пользователя</h4>
+	<InputText @bind-Value="_username" placeholder="Имя пользователя"/>
+	<h4>Пароль</h4>
+	<InputText @bind-Value="_password" type="password" placeholder="Пароль"/>
+	<div class="alert alert-danger" role="alert" hidden="@(!_isError)">
+		@_errorMessage
+	</div>
+	<div hidden="@(!_isLoading)">Загрузка...</div>
+	<NavLink class="nav-link" href="signup">
+		<span aria-hidden="true"></span> Зарегистрироваться
+	</NavLink>
+	<button class="btn btn-primary" @onclick="Login" disabled="@_isInvalid">
+		Войти
+	</button>
+}
+else
+{
+	<h1>Вы успешно вошли как @_currentUser.Username</h1>
+}
+
+@code {
+	private string? _username;
+	private string? _password;
+	private string? _errorMessage;
+	private bool _isInvalid => string.IsNullOrEmpty(_username) || string.IsNullOrEmpty(_password);
+	private bool _isError => _errorMessage is not null;
+	private bool _isLoading;
+	private User? _currentUser;
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		await base.OnAfterRenderAsync(firstRender);
+		if (firstRender 
+			&& await _localStorageService.ContainKeyAsync("user"))
+		{
+			_currentUser = await _localStorageService.GetItemAsync<User>("user");
+		}
+		await InvokeAsync(StateHasChanged);
+	}
+
+	private async void Login()
+	{
+		_errorMessage = null;
+		_isLoading = true;
+		if (_isInvalid)
+		{
+			return;
+		}
+		await _exceptionHandler.HandleAsync(async () =>
+		{
+			await _authenticationService.SignInAsync(_username!, _password!);
+			_isLoading = false;
+		}, (type, errorMessage) =>
+		{
+			_errorMessage = type switch
+			{
+				ExceptionType.NotFound => "Пользователь не найден",
+				ExceptionType.Unauthorized => "Неверный пароль",
+				ExceptionType.InternalError => $"Произошла непредвиденная ошибка {errorMessage}",
+				_ => $"Произошла непредвиденная ошибка {errorMessage}",
+			};
+			_isLoading = false;
+		});
+		await InvokeAsync(StateHasChanged);
+	}
+}
